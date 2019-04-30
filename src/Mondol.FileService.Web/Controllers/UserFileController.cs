@@ -81,6 +81,7 @@ namespace Mondol.FileService.Controllers
         ///    1. 再次调用本接口，传file参数，不传hash参数（传也会忽略）
         /// </remarks>
         [HttpPost]
+        [EnableCors("AllowSameDomain")]
         public Task<DataResult<UploadResultData>> UploadAsync(UploadFileInput model)
         {
             /*

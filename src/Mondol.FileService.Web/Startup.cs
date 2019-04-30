@@ -46,6 +46,14 @@ namespace Mondol.FileService
 
         public void ConfigureServices(IServiceCollection services)
         {
+            #region 跨域
+            var urls = _cfg["AppConfig:Cores"].Split(',');
+            services.AddCors(options =>
+            options.AddPolicy("AllowSameDomain",
+                builder => builder.WithOrigins(urls).AllowAnyMethod().AllowAnyHeader().AllowAnyOrigin().AllowCredentials())
+            );
+            #endregion
+
             ServiceConfigure.AddAuthorization(services, opt =>
             {
                 opt.AppSecret = _cfg["General:AppSecret"];
@@ -129,7 +137,7 @@ namespace Mondol.FileService
             {
                 app.UseExceptionHandler(new GlobalExceptionHandlerOptions());
             }
-            
+            app.UseCors("AllowSameDomain");
             app.UseMvc(routes =>
             {
                 routes.MapRoute(

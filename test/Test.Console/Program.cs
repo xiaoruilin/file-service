@@ -22,7 +22,7 @@ namespace Test.Console
                 services.AddOptions();
                 services.AddFileService(cfg =>
                 {
-                    cfg.Host = "fs-dev.l5zx.com";
+                    cfg.Host = "localhost:5001";
                     cfg.AppSecret = "{F43D9A20-69DE-45D6-E298-7DACB57B9C10}";
                 });
 
