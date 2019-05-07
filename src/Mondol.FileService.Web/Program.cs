@@ -92,7 +92,7 @@ namespace Mondol.FileService
                     options.ValidateScopes = context.HostingEnvironment.IsDevelopment();
                 })
                 .UseSetting(WebHostDefaults.HostingStartupAssembliesKey, BuildHostingStartupAssemblies())
-                .UseStartup<Startup>();
+                .UseStartup<Startup>().UseUrls("http://*:5000");
 
             return builder.Build();
         }
