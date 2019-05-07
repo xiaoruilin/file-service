@@ -6,5 +6,6 @@
   <PropertyGroup>
     <ActiveDebugProfile>Mondol.FileService</ActiveDebugProfile>
     <ShowAllFiles>false</ShowAllFiles>
+    <NameOfLastUsedPublishProfile>FolderProfile</NameOfLastUsedPublishProfile>
   </PropertyGroup>
 </Project>
