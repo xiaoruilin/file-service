@@ -155,7 +155,7 @@ namespace Mondol.FileService.Controllers
         /// <param name="periodDay">有效期（天）</param>
         /// <returns></returns>
         [HttpPost("ownerTokens")]
-        [Obsolete("内部使用")]
+        //[Obsolete("内部使用")]
         public DataResult<string> CreateOwnerToken(int ownerType, int ownerId, int periodDay)
         {
             var tokenStr = _ownerTokenCodec.Encode(new OwnerToken
@@ -174,7 +174,7 @@ namespace Mondol.FileService.Controllers
         /// GetOwnerTokenInfo
         /// </summary>
         [HttpGet("ownerTokens/{token}/info")]
-        [Obsolete("内部使用")]
+        //[Obsolete("内部使用")]
         public DataResult<OwnerToken> GetOwnerTokenInfo(string token)
         {
             if (!_ownerTokenCodec.TryDecode(token, out var tokenInfo))

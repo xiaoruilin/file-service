@@ -80,10 +80,11 @@ namespace Mondol.FileService.Service
                 {
                     tmpFilePath = await ReceiveToTempFileAsync(file);
                     //优先使用文件的hash
-                    hash=hash?? FileUtil.GetSha1(tmpFilePath);
+                    //hash = FileUtil.GetSha1(tmpFilePath);
                 }
                 if (string.IsNullOrWhiteSpace(hash))
-                    throw new FriendlyException("file 与 hash 必需至少指定一个");
+                    throw new FriendlyException("hash 必需指定");
+                    //throw new FriendlyException("file 与 hash 必需至少指定一个");
 
                 Task tSync = null;
                 var pseudoId = GeneratePseudoId(hash);
