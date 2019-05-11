@@ -96,6 +96,35 @@ namespace Mondol.FileService.Controllers
 
             return _fileUpdSvce.UploadAsync(model.OwnerToken, model.File, fileName, model.Hash, model.PeriodMinute);
         }
+        
+        /// <summary>
+        /// 上传文件
+        /// </summary>
+        /// <remarks>
+        /// ### 上传步骤：
+        /// 1. 在真正上传文件前先计算文件SHA1值
+        /// 2. 调用本接口只传hash参数，不传file参数
+        /// 3. 如果本文件之前有人传过则接口返回成功(errCode=0)
+        ///    1. 跳过后续步骤
+        /// 4. 如果本文件之前没人传过，则errCode=100
+        ///    1. 再次调用本接口，传file参数，不传hash参数（传也会忽略）
+        /// </remarks>
+        [HttpPost("fromBlock")]
+        [EnableCors("AllowSameDomain")]
+        public Task<DataResult<UploadResultData>> UploadBlockAsync(UploadFileBlockInput model)
+        {
+            /*
+             * 传文件流的时候可以不指定FileName，从文件流中读取，指定了优先级更高
+             * 传Hash的时候必需指定文件名
+             */
+            var fileName = model.FileName;
+            if (string.IsNullOrWhiteSpace(fileName))
+                fileName = model.File?.FileName;
+            if (string.IsNullOrWhiteSpace(fileName))
+                return Task.FromResult(new DataResult<UploadResultData>(ResultErrorCodes.Failure, "文件名不能为空"));
+
+            return _fileUpdSvce.UploadBlockAsync(model.OwnerToken, model.File, fileName, model.Hash, model.PeriodMinute,model.CurBlock,model.BlockTotal);
+        }
 
         /// <summary>
         /// 上传文件（从远程拉取）

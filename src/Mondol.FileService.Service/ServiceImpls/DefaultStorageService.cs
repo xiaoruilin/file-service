@@ -20,6 +20,7 @@ using Mondol.Security.Cryptography.Utils;
 using Mondol.FileService.Service.Options;
 using Mondol.IO.Utils;
 using File = Mondol.FileService.Db.Entities.File;
+using System.Linq;
 
 namespace Mondol.FileService.Service
 {
@@ -133,15 +134,130 @@ namespace Mondol.FileService.Service
                     }
                 }
 
-                var fileOwner = new FileOwner
+                var fileOwner = await FileRepo.GetFileOwnerByOwnerAsync(pseudoId, fileInfo.Id, ownerTypeId.OwnerType, ownerTypeId.OwnerId);
+                if (fileOwner == null)
                 {
-                    FileId = fileInfo.Id,
-                    Name = fileName,
-                    OwnerType = ownerTypeId.OwnerType,
-                    OwnerId = ownerTypeId.OwnerId,
-                    CreateTime = DateTime.Now
+                    fileOwner = new FileOwner
+                    {
+                        FileId = fileInfo.Id,
+                        Name = fileName,
+                        OwnerType = ownerTypeId.OwnerType,
+                        OwnerId = ownerTypeId.OwnerId,
+                        CreateTime = DateTime.Now
+                    };
+                    await FileRepo.AddFileOwnerAsync(fileOwner, pseudoId);
+                }
+                    if (tSync != null)
+                    await tSync;
+
+                //添加配额使用量
+                await OwnerRepo.AddOwnerUsedQuotaAsync(ownerTypeId.OwnerType, ownerTypeId.OwnerId, fileSize);
+
+                return new FileStorageInfo
+                {
+                    File = fileInfo,
+                    Owner = fileOwner,
+                    Server = recServer,
+                    PseudoId = pseudoId
                 };
-                await FileRepo.AddFileOwnerAsync(fileOwner, pseudoId);
+            }
+            finally
+            {
+                if (tmpFilePath != null)
+                    FileUtil.TryDelete(tmpFilePath);
+            }
+        }
+
+         /// <summary>
+        /// 为指定用户创建文件
+        /// </summary>
+        public async Task<FileStorageInfo> CreateFileBlockAsync(FileOwnerTypeId ownerTypeId, string hash, Stream file, string fileName, int periodMinute = 0, int curBlock=0, int blockTotal=0)
+        {
+            if (!_clusterSvce.CurrentServer.AllowUpload)
+                throw new FriendlyException("请从上传服务器上传");
+
+            string tmpFilePath = null;
+            try
+            {
+                var extName = Path.GetExtension(fileName);
+                if (string.IsNullOrEmpty(extName))
+                    throw new FriendlyException("文件名缺少扩展名");
+                extName = extName.Substring(1).ToLower();
+                var mime = _mimeProvider.GetMimeByExtensionName(extName);
+
+                //获取hash
+                if (file != null)
+                {
+                    tmpFilePath = await ReceiveToTempFileAsync(file);
+                    //优先使用文件的hash
+                    //hash = FileUtil.GetSha1(tmpFilePath);
+                }
+                if (string.IsNullOrWhiteSpace(hash))
+                    throw new FriendlyException("hash 必需指定");
+                    //throw new FriendlyException("file 与 hash 必需至少指定一个");
+
+                Task tSync = null;
+                var pseudoId = GeneratePseudoId(hash);
+                var fileInfo = await FileRepo.GetFileByHashAsync(pseudoId, hash);
+                //文件不存在，并且没有传file流
+                if (fileInfo == null && tmpFilePath == null)
+                    throw new FileNotFoundException("File does not exist");
+
+                //检查所有者剩余配额
+                var fileSize = fileInfo?.Length ?? new System.IO.FileInfo(tmpFilePath).Length;
+                var remainQuota = await OwnerRepo.GetOwnerRemainQuotaAsync(ownerTypeId.OwnerType, ownerTypeId.OwnerId);
+                if (remainQuota < fileSize)
+                    throw new FriendlyException("您已经没有足够的空间上传该文件");
+
+                Service.Options.Server recServer = null;
+                //检查存在否
+                if (fileInfo == null)
+                {
+                    //插入新文件记录
+                    recServer = _clusterSvce.ElectServer();
+                    fileInfo = new File
+                    {
+                        ServerId = recServer.Id,
+                        Length = new System.IO.FileInfo(tmpFilePath).Length,
+                        MimeId = (int)mime.Id,
+                        SHA1 = hash,
+                        ExtInfo = string.Empty,
+                        CreateTime = DateTime.Now
+                    };
+                    //if (FileRepo.GetFileByHashAsync(pseudoId, hash) == null) {
+                        await FileRepo.AddFileAsync(fileInfo, pseudoId);
+                    //}
+                    
+                    tSync = _clusterSvce.SyncFileToServerBlockAsync(this, tmpFilePath, fileInfo, pseudoId, recServer, curBlock,blockTotal);
+                }
+                else
+                {
+                    recServer = _clusterSvce.GetServerById(fileInfo.ServerId);
+                    var fileExists = await _clusterSvce.RawFileExistsAsync(this, recServer, pseudoId, fileInfo.CreateTime, fileInfo.Id);
+                    if (!fileExists)
+                    {
+                        //通过hash进来的，并且文件不存在
+                        if (string.IsNullOrEmpty(tmpFilePath))
+                            throw new FriendlyException("File does not exist");
+
+                        //文件被删或意外丢失重传
+                        tSync = _clusterSvce.SyncFileToServerBlockAsync(this, tmpFilePath, fileInfo, pseudoId, recServer, curBlock, blockTotal);
+                    }
+                }
+
+                var fileOwner = await FileRepo.GetFileOwnerByOwnerAsync(pseudoId, fileInfo.Id,ownerTypeId.OwnerType,ownerTypeId.OwnerId);
+                if (fileOwner == null) {
+                    fileOwner = new FileOwner
+                    {
+                        FileId = fileInfo.Id,
+                        Name = fileName,
+                        OwnerType = ownerTypeId.OwnerType,
+                        OwnerId = ownerTypeId.OwnerId,
+                        CreateTime = DateTime.Now
+                    };
+                    await FileRepo.AddFileOwnerAsync(fileOwner, pseudoId);
+                }
+                
                 if (tSync != null)
                     await tSync;
 
@@ -290,6 +406,60 @@ namespace Mondol.FileService.Service
                         System.IO.File.Delete(destFilePath);
                 }
                 System.IO.File.Move(srcFilePath, destFilePath);
+            });
+        }
+        
+        /// <summary>
+        /// 移动文件到指定路径
+        /// </summary>
+        public Task MoveToPathLastFileMergeAsync(string srcFilePath, string destFilePath, bool overrideDest, int curBlock, int blockTotal)
+        {
+            return Task.Run(() =>
+            {
+                if (overrideDest)
+                {
+                    if (System.IO.File.Exists(destFilePath))
+                        System.IO.File.Delete(destFilePath);
+                }
+                if (blockTotal > 0)
+                {
+                    bool isLastFile = false;
+                    if (System.IO.File.Exists(destFilePath))
+                        System.IO.File.Delete(destFilePath);
+
+                    DirectoryInfo dirInfo = System.IO.Directory.GetParent(destFilePath);
+                    string[] rawFiles = System.IO.Directory.GetFiles(dirInfo.FullName);
+                    if (rawFiles.Length + 1 == blockTotal)
+                    {
+                        if (System.IO.File.Exists(destFilePath))
+                            System.IO.File.Delete(destFilePath);
+                        else
+                        {
+                            isLastFile=true;
+                        }
+                    }
+                    System.IO.File.Move(srcFilePath, String.Format("{0}_{1}", destFilePath,curBlock));
+
+                    if (isLastFile) {
+                        string[] rawFilesLast = System.IO.Directory.GetFiles(dirInfo.FullName);
+
+                        //合并文件块
+                        using (var fs = new FileStream(destFilePath, FileMode.Create))
+                        {
+                            foreach (var part in rawFilesLast.OrderBy(x => x.Length).ThenBy(x => x))
+                            {
+                                var bytes = System.IO.File.ReadAllBytes(part);
+                                fs.WriteAsync(bytes, 0, bytes.Length);
+                                bytes = null;
+                                System.IO.File.Delete(part);//删除分块
+                            }
+                        }
+                    }
+                }
+                else {
+                    System.IO.File.Move(srcFilePath, destFilePath);
+                }
+                
             });
         }
 

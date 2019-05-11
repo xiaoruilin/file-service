@@ -105,6 +105,32 @@ namespace Mondol.FileService.Service
                 throw new NotImplementedException();
             }
         }
+        public async Task SyncFileToServerBlockAsync(IStorageService storageSvce, string filePath, File file, uint pseudoId, Service.Options.Server server, int curBlock, int blockTotal)
+        {
+            //如果目标服务器就是当前服务器，则直接移动文件
+            if (CurrentServer.Id == server.Id)
+            {
+                var realFilePath = storageSvce.GetRawFilePath(pseudoId, file.CreateTime, file.Id);
+                await storageSvce.MoveToPathLastFileMergeAsync(filePath, realFilePath, true,curBlock,blockTotal);
+            }
+            else
+            {
+                //var fTokenStr = _fileTokenCodec.Encode(fToken);
+
+                //var url = $"{server.Host}/api/cluster/files";
+                //var mfdCont = new MultipartFormDataContent();
+                //mfdCont.AddByString("fileToken", fTokenStr);
+                //mfdCont.AddByFile("file", filePath);
+
+                //var rspMsg = await _httpClient.PostAsync(url, mfdCont);
+                //rspMsg.EnsureSuccessStatusCode();
+                //var rspStr = await rspMsg.Content.ReadAsStringAsync();
+                //var json = JObject.Parse(rspStr);
+                //if (json.Value<int>("errCode") != 0)
+                //    throw new InvalidProgramException($"同步失败：{json.Value<string>("errMsg")}");
+                throw new NotImplementedException();
+            }
+        }
 
         public async Task DeleteFileAsync(IStorageService storageSvce, uint pseudoId, DateTime fileCreateTime, int fileId, Service.Options.Server server)
         {

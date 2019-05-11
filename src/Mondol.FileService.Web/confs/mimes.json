@@ -317,6 +317,10 @@
       "ExtensionNames": [ "zip" ]
     },
     {
+      "ContentType": "application/ocelet-stream",
+      "ExtensionNames": [ "rar" ]
+    },
+    {
       "ContentType": "audio/basic",
       "ExtensionNames": [ "au", "snd" ]
     },

@@ -19,9 +19,9 @@
     "Mondol.FileService": {
       "commandName": "Project",
       "launchBrowser": true,
-      "launchUrl": "http://*:5001/docs/apis/",
+      "launchUrl": "http://*:5000/docs/apis/",
       "environmentVariables": {
-        "ASPNETCORE_URLS": "http://*:5001",
+        "ASPNETCORE_URLS": "http://*:5000",
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     }

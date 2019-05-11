@@ -36,6 +36,14 @@ namespace Mondol.FileService.Web.Models.Input.User
         public int PeriodMinute { get; set; } = 0;
     }
 
+    public class UploadFileBlockInput : UploadFileInput {
+        [DefaultValue(0)]
+        public int CurBlock { get; set; }
+
+        [DefaultValue(0)]
+        public int BlockTotal { get; set; }
+    }
+
     public class BaseOwnerTokenInput
     {
         /// <summary>

@@ -29,6 +29,11 @@ namespace Mondol.FileService.Service
         /// 为指定用户创建文件
         /// </summary>
         Task<FileStorageInfo> CreateFileAsync(FileOwnerTypeId ownerTypeId, string hash, Stream file, string fileName, int periodMinute = 0);
+        
+        /// <summary>
+        /// 为指定用户创建文件
+        /// </summary>
+        Task<FileStorageInfo> CreateFileBlockAsync(FileOwnerTypeId ownerTypeId, string hash, Stream file, string fileName, int periodMinute = 0, int curBlock=0, int blockTotal=0);
 
         Task<FileStorageInfo> CreateFileAsync(FileOwnerTypeId ownerTypeId, string hash, IFormFile file, string fileName, int periodMinute = 0);
 
@@ -47,5 +52,10 @@ namespace Mondol.FileService.Service
         /// 移动文件到指定路径
         /// </summary>
         Task MoveToPathAsync(string srcFilePath, string destFilePath, bool overrideDest);
+
+        /// <summary>
+        /// 移动文件到指定路径，最后一块就合并文件
+        /// </summary>
+        Task MoveToPathLastFileMergeAsync(string srcFilePath, string destFilePath, bool overrideDest, int curBlock, int blockTotal);
     }
 }

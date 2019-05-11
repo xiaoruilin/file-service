@@ -55,6 +55,14 @@ namespace Mondol.FileService.Service
             }
         }
 
+        public async Task<DataResult<UploadResultData>> UploadBlockAsync(string ownerToken, IFormFile file, string fileName, string hash, int periodMinute,int curBlock,int blockTotal)
+        {
+            using (var stream = file?.OpenReadStream())
+            {
+                return await UploadBlockAsync(ownerToken, stream, fileName, hash, periodMinute,curBlock,blockTotal);
+            }
+        }
+
         public Task<DataResult<UploadResultData>> UploadAsync(string ownerToken, Stream file, string fileName,
             string hash, int periodMinute)
         {
@@ -67,6 +75,20 @@ namespace Mondol.FileService.Service
                 OwnerId = oToken.OwnerId
             };
             return UploadAsync(foti, file, fileName, hash, periodMinute);
+        }
+
+        public Task<DataResult<UploadResultData>> UploadBlockAsync(string ownerToken, Stream file, string fileName,
+            string hash, int periodMinute, int curBlock, int blockTotal)
+        {
+            if (!DecodeAndCheckOwnerToken(ownerToken, out var oToken, out DataResult<UploadResultData> result))
+                return Task.FromResult(result);
+
+            var foti = new FileOwnerTypeId
+            {
+                OwnerType = oToken.OwnerType,
+                OwnerId = oToken.OwnerId
+            };
+            return UploadBlockAsync(foti, file, fileName, hash, periodMinute,curBlock,blockTotal);
         }
 
         public async Task<DataResult<UploadResultData>> UploadAsync(FileOwnerTypeId foti, IFormFile file, string fileName, string hash, int periodMinute)
@@ -82,6 +104,54 @@ namespace Mondol.FileService.Service
             try
             {
                 var fileInfo = await _storageSvce.CreateFileAsync(foti, hash, file, fileName, periodMinute);
+                var etAddMinute = periodMinute > 0 ? periodMinute : 52560000; //最大100年
+                var fToken = new FileToken
+                {
+                    PseudoId = fileInfo.PseudoId,
+                    FileId = fileInfo.File.Id,
+                    FileOwnerId = fileInfo.Owner.Id,
+                    MimeId = (uint)fileInfo.File.MimeId,
+                    FileCreateTime = fileInfo.File.CreateTime,
+                    ExpireTime = DateTime.Now.AddMinutes(etAddMinute)
+                };
+                var fTokenStr = _fileTokenCodec.Encode(fToken);
+
+                var urDat = new UploadResultData
+                {
+                    FileToken = fTokenStr,
+                    Url = $"{GetCurrentScheme()}://{fileInfo.Server.Host}/files/{fTokenStr}",
+                    Name = fileInfo.Owner.Name,
+                    Length = fileInfo.File.Length
+                };
+                var signLst = new[]
+                {
+                    new KeyValuePair<string, object>(nameof(UploadResultData.FileToken), urDat.FileToken),
+                    new KeyValuePair<string, object>(nameof(UploadResultData.Url), urDat.Url),
+                    new KeyValuePair<string, object>(nameof(UploadResultData.Name), urDat.Name),
+                    new KeyValuePair<string, object>(nameof(UploadResultData.Length), urDat.Length)
+                };
+                urDat.Sign = _appSecretSigner.Sign(signLst);
+
+                return new DataResult<UploadResultData>(ResultErrorCodes.Success)
+                {
+                    Data = urDat
+                };
+            }
+            catch (FileNotFoundException)
+            {
+                return new DataResult<UploadResultData>(100, "文件不存在，请直接上传");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                return new DataResult<UploadResultData>(ResultErrorCodes.SystemError, ex.Message);
+            }
+        }
+        public async Task<DataResult<UploadResultData>> UploadBlockAsync(FileOwnerTypeId foti, Stream file, string fileName, string hash, int periodMinute, int curBlock, int blockTotal)
+        {
+            try
+            {
+                var fileInfo = await _storageSvce.CreateFileBlockAsync(foti, hash, file, fileName, periodMinute,curBlock,blockTotal);
                 var etAddMinute = periodMinute > 0 ? periodMinute : 52560000; //最大100年
                 var fToken = new FileToken
                 {
