@@ -21,6 +21,7 @@ using Mondol.FileService.Service.Options;
 using Mondol.IO.Utils;
 using File = Mondol.FileService.Db.Entities.File;
 using System.Linq;
+using MySql.Data.MySqlClient;
 
 namespace Mondol.FileService.Service
 {
@@ -115,9 +116,9 @@ namespace Mondol.FileService.Service
                         ExtInfo = string.Empty,
                         CreateTime = DateTime.Now
                     };
-                    await FileRepo.AddFileAsync(fileInfo, pseudoId);
-
                     tSync = _clusterSvce.SyncFileToServerAsync(this, tmpFilePath, fileInfo, pseudoId, recServer);
+
+                    await FileRepo.AddFileAsync(fileInfo, pseudoId);
                 }
                 else
                 {
@@ -126,8 +127,11 @@ namespace Mondol.FileService.Service
                     if (!fileExists)
                     {
                         //通过hash进来的，并且文件不存在
-                        if (string.IsNullOrEmpty(tmpFilePath))
-                            throw new FriendlyException("File does not exist");
+                        if (string.IsNullOrEmpty(tmpFilePath)) {
+                            await FileRepo.DeleteFileAsync(ownerTypeId.OwnerId, fileInfo.Id, pseudoId);
+                            //throw new FriendlyException("File does not exist(CFA-FE)");
+                        }
+                            
 
                         //文件被删或意外丢失重传
                         tSync = _clusterSvce.SyncFileToServerAsync(this, tmpFilePath, fileInfo, pseudoId, recServer);
@@ -224,11 +228,10 @@ namespace Mondol.FileService.Service
                         ExtInfo = string.Empty,
                         CreateTime = DateTime.Now
                     };
-                    //if (FileRepo.GetFileByHashAsync(pseudoId, hash) == null) {
-                        await FileRepo.AddFileAsync(fileInfo, pseudoId);
-                    //}
-                    
                     tSync = _clusterSvce.SyncFileToServerBlockAsync(this, tmpFilePath, fileInfo, pseudoId, recServer, curBlock,blockTotal);
+                    if (tSync.IsCompletedSuccessfully) {
+                        await FileRepo.AddFileAsync(fileInfo, pseudoId);
+                    }
                 }
                 else
                 {
@@ -237,11 +240,17 @@ namespace Mondol.FileService.Service
                     if (!fileExists)
                     {
                         //通过hash进来的，并且文件不存在
-                        if (string.IsNullOrEmpty(tmpFilePath))
-                            throw new FriendlyException("File does not exist");
-
+                        if (string.IsNullOrEmpty(tmpFilePath)) {
+                            await FileRepo.DeleteFileAsync(ownerTypeId.OwnerId, fileInfo.Id, pseudoId);
+                            //throw new FriendlyException("File does not exist(CFBA-FE)");
+                        }
+                            
                         //文件被删或意外丢失重传
                         tSync = _clusterSvce.SyncFileToServerBlockAsync(this, tmpFilePath, fileInfo, pseudoId, recServer, curBlock, blockTotal);
+                        if (!tSync.IsCompletedSuccessfully)
+                        {
+                            await FileRepo.DeleteFileAsync(ownerTypeId.OwnerId, fileInfo.Id, pseudoId);
+                        }
                     }
                 }
 
@@ -438,7 +447,11 @@ namespace Mondol.FileService.Service
                             isLastFile=true;
                         }
                     }
-                    System.IO.File.Move(srcFilePath, String.Format("{0}_{1}", destFilePath,curBlock));
+
+                    string blockFile = String.Format("{0}_{1}", destFilePath, curBlock);
+                    if (System.IO.File.Exists(blockFile))
+                        System.IO.File.Delete(blockFile);
+                    System.IO.File.Move(srcFilePath, blockFile);
 
                     if (isLastFile) {
                         string[] rawFilesLast = System.IO.Directory.GetFiles(dirInfo.FullName);

@@ -60,11 +60,11 @@ namespace Mondol.FileService.Db.Repositories.Impls
 
             return Task.Run(() =>
             {
-                return ((List<File>) _masterDb.Connection.Query<File, FileOwner, File>(sql, (f, fo) =>
-                {
-                    f.FileOwner = fo;
-                    return f;
-                }, new {fileOwnerId}, buffered: true, splitOn: "Id")).FirstOrDefault();
+                return ((List<File>)_masterDb.Connection.Query<File, FileOwner, File>(sql, (f, fo) =>
+               {
+                   f.FileOwner = fo;
+                   return f;
+               }, new { fileOwnerId }, buffered: true, splitOn: "Id")).FirstOrDefault();
             });
         }
 
@@ -128,14 +128,13 @@ namespace Mondol.FileService.Db.Repositories.Impls
 
                 using (var trans = _masterDb.Connection.Transaction())
                 {
-                    sql = $"delete from FileOwner_{tabInex} where Id = @p0";
-                    _masterDb.Connection.Execute(sql, new object[] { ownerId });
+                    sql = $"delete from FileOwner_{tabInex} where FileId = @fileId";
+                    _masterDb.Connection.Execute(sql, new { fileId });
                     if (refCount <= 1)
                     {
-                        sql = $"delete from File_{tabInex} where Id = @p0";
-                        _masterDb.Connection.Execute(sql, new object[] { ownerId });
+                        sql = $"delete from File_{tabInex} where Id = @fileId";
+                        _masterDb.Connection.Execute(sql, new { fileId });
                     }
-
                     trans.Complete();
                 }
 
