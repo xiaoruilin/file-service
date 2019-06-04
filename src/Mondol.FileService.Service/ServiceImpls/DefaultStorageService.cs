@@ -116,9 +116,8 @@ namespace Mondol.FileService.Service
                         ExtInfo = string.Empty,
                         CreateTime = DateTime.Now
                     };
-                    tSync = _clusterSvce.SyncFileToServerAsync(this, tmpFilePath, fileInfo, pseudoId, recServer);
-
                     await FileRepo.AddFileAsync(fileInfo, pseudoId);
+                    tSync = _clusterSvce.SyncFileToServerAsync(this, tmpFilePath, fileInfo, pseudoId, recServer);
                 }
                 else
                 {
@@ -129,7 +128,7 @@ namespace Mondol.FileService.Service
                         //通过hash进来的，并且文件不存在
                         if (string.IsNullOrEmpty(tmpFilePath)) {
                             await FileRepo.DeleteFileAsync(ownerTypeId.OwnerId, fileInfo.Id, pseudoId);
-                            //throw new FriendlyException("File does not exist(CFA-FE)");
+                            throw new FriendlyException("File does not exist(CFA-FE)");
                         }
                             
 
@@ -228,10 +227,8 @@ namespace Mondol.FileService.Service
                         ExtInfo = string.Empty,
                         CreateTime = DateTime.Now
                     };
+                    await FileRepo.AddFileAsync(fileInfo, pseudoId);
                     tSync = _clusterSvce.SyncFileToServerBlockAsync(this, tmpFilePath, fileInfo, pseudoId, recServer, curBlock,blockTotal);
-                    if (tSync.IsCompletedSuccessfully) {
-                        await FileRepo.AddFileAsync(fileInfo, pseudoId);
-                    }
                 }
                 else
                 {
@@ -242,15 +239,11 @@ namespace Mondol.FileService.Service
                         //通过hash进来的，并且文件不存在
                         if (string.IsNullOrEmpty(tmpFilePath)) {
                             await FileRepo.DeleteFileAsync(ownerTypeId.OwnerId, fileInfo.Id, pseudoId);
-                            //throw new FriendlyException("File does not exist(CFBA-FE)");
+                            throw new FriendlyException("File does not exist(CFBA-FE)");
                         }
                             
                         //文件被删或意外丢失重传
                         tSync = _clusterSvce.SyncFileToServerBlockAsync(this, tmpFilePath, fileInfo, pseudoId, recServer, curBlock, blockTotal);
-                        if (!tSync.IsCompletedSuccessfully)
-                        {
-                            await FileRepo.DeleteFileAsync(ownerTypeId.OwnerId, fileInfo.Id, pseudoId);
-                        }
                     }
                 }
 

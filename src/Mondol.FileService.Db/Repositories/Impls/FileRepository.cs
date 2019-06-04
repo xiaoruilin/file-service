@@ -126,8 +126,8 @@ namespace Mondol.FileService.Db.Repositories.Impls
                 var sql = $"select count(1) from FileOwner_{tabInex} where FileId = @fileId";
                 var refCount = _masterDb.Connection.ExecuteScalar<int>(sql, new { fileId });
 
-                using (var trans = _masterDb.Connection.Transaction())
-                {
+                //using (var trans = _masterDb.Connection.Transaction())
+                //{
                     sql = $"delete from FileOwner_{tabInex} where FileId = @fileId";
                     _masterDb.Connection.Execute(sql, new { fileId });
                     if (refCount <= 1)
@@ -135,8 +135,8 @@ namespace Mondol.FileService.Db.Repositories.Impls
                         sql = $"delete from File_{tabInex} where Id = @fileId";
                         _masterDb.Connection.Execute(sql, new { fileId });
                     }
-                    trans.Complete();
-                }
+                //    trans.Complete();
+                //}
 
                 return refCount - 1;
             });
