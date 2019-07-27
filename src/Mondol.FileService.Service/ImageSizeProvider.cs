@@ -46,8 +46,8 @@ namespace Mondol.FileService.Service
                     Width = cImgSize.GetValue<int>("Width"),
                     Height = cImgSize.GetValue<int>("Height")
                 };
-                if (imgSize.Width < 1)
-                    throw new InvalidDataException("bad ImageSaze width: " + imgSize.Name);
+                if (imgSize.Width < 1 && imgSize.Height<1)
+                    throw new InvalidDataException("bad ImageSaze width or height: " + imgSize.Name);
 
                 //添加到字典
                 if (nameDict.TryGetValue(imgSize.Name, out var imgSize2))

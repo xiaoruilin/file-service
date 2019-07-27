@@ -32,8 +32,12 @@ namespace Mondol.FileService.Service.ServiceImpls
                     {
                         img.Thumbnail(dstImgMod.Size.Width, dstImgMod.Size.Height);
 
-                        //magick会自动根据扩展名决定文件格式
-                        img.Write(dstTmpFilePath);
+                        using (MagickImage watermark = new MagickImage("watermark.png"))
+                        {
+                            img.Composite(watermark, img.Width - 150, img.Height - 29, CompositeOperator.Over);
+                            //magick会自动根据扩展名决定文件格式
+                            img.Write(dstTmpFilePath);
+                        }
                     }
 
                     File.Move(dstTmpFilePath, dstFilePath);

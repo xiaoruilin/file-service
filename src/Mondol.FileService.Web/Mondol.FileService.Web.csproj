@@ -46,6 +46,11 @@
     <ProjectReference Include="..\Mondol.FileService.Authorization\Mondol.FileService.Authorization.csproj" />
     <ProjectReference Include="..\Mondol.FileService.Db\Mondol.FileService.Db.csproj" />
     <ProjectReference Include="..\Mondol.FileService.Service\Mondol.FileService.Service.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="watermark.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>  
 
 </Project>
