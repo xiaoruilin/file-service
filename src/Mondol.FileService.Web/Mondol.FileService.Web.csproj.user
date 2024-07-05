@@ -6,6 +6,6 @@
   <PropertyGroup>
     <ActiveDebugProfile>Mondol.FileService</ActiveDebugProfile>
     <ShowAllFiles>true</ShowAllFiles>
-    <NameOfLastUsedPublishProfile>FolderProfile</NameOfLastUsedPublishProfile>
+    <NameOfLastUsedPublishProfile>D:\WorkGitHub\file-service\src\Mondol.FileService.Web\Properties\PublishProfiles\FolderProfile.pubxml</NameOfLastUsedPublishProfile>
   </PropertyGroup>
 </Project>

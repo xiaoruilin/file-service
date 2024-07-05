@@ -1,3 +1,4 @@
+
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -45,9 +46,10 @@ namespace Test.Console
             hcFac.CreateClient();
 
             var fsMgr = Service.GetRequiredService<IFileServiceManager>();
-            var r1 = await fsMgr.GetFileInfoAsync("1cNhV2O0uYuJK6Lr05mcEgQLAgIFNAAAAEQAAABuwzXNfiUXs6lK0MHGI1eMXJQgFbA--");
+            var oToken = fsMgr.GenerateOwnerTokenString(1, 1, TimeSpan.FromDays(1111));
+            System.Console.WriteLine("oToken" + oToken);
 
-            var oToken = fsMgr.GenerateOwnerTokenString(1, 1, TimeSpan.FromSeconds(1111));
+            var r1 = await fsMgr.GetFileInfoAsync("1cNhV2O0uYuJK6Lr05mcEgQLAgIFNAAAAEQAAABuwzXNfiUXs6lK0MHGI1eMXJQgFbA--");
             var result = await fsMgr.GetFileInfoAsync("fasdfasdf");
 
             //System.Console.WriteLine(rs.ErrorCode);
